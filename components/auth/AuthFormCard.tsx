@@ -4,8 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { googleProvider, firebaseAuth } from "@/lib/firebase-client";
-import { signInWithPopup } from "firebase/auth";
 
 type AuthMode = "login" | "register";
 
@@ -95,7 +93,30 @@ export default function AuthFormCard({ mode }: AuthFormCardProps) {
     setSuccess("");
     setIsSubmitting(true);
     try {
-      const credential = await signInWithPopup(firebaseAuth, googleProvider);
+      const { getApps, getApp, initializeApp } = await import("firebase/app");
+      const { getAuth, GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
+
+      const firebaseConfig = {
+        apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+        authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+        appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+        measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+      };
+
+      if (!firebaseConfig.apiKey) {
+        setError("Firebase API key is missing. Please check environment variables.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const provider = new GoogleAuthProvider();
+
+      const credential = await signInWithPopup(auth, provider);
       const googleUser = credential.user;
       const email = googleUser.email ?? "";
       const fullName = googleUser.displayName ?? "Google User";
